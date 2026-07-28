@@ -158,9 +158,6 @@ main
  ↑
  │ Pull Request
  │
-develop
- ↑
- │
 feature/*
 ```
 
