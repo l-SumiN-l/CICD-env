@@ -1,0 +1,36 @@
+name: ${COMPOSE_PROJECT_NAME}
+
+services:
+  test:
+    image: nginx:alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-test
+    restart: "no"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - test-data:/usr/share/nginx/html
+    networks:
+      - cicd-env-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1/"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  cicd-env-network:
+    name: ${COMPOSE_PROJECT_NAME}-network
+    driver: bridge
+
+volumes:
+  test-data:
+    name: ${COMPOSE_PROJECT_NAME}-test-data

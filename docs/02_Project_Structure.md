@@ -22,7 +22,7 @@
 # 2. 想定する最終構成
 
 ```text
-GameServer/
+CICD-ENV/
 ├── .github/
 │   └── workflows/
 │
@@ -64,8 +64,8 @@ Windows側でプロジェクトを作成する。
 例：
 
 ```powershell
-mkdir GameServer
-cd GameServer
+mkdir CICD-ENV
+cd CICD-ENV
 ```
 
 ---
@@ -184,10 +184,10 @@ New-Item .env.example
 TZ=Asia/Tokyo
 
 # Game Server
-GAME_SERVER_NAME=GameServer
+GAME_SERVER_NAME=CICD-ENV
 
 # Docker
-COMPOSE_PROJECT_NAME=gameserver
+COMPOSE_PROJECT_NAME=CICD-ENV
 ```
 
 `.env.example` はGit管理対象とする。
@@ -237,7 +237,7 @@ Dockerを利用したゲームサーバー運用基盤。
 ## Directory Structure
 
 ```text
-GameServer/
+CICD-ENV/
 ├── .github/
 ├── compose/
 ├── scripts/
@@ -308,7 +308,7 @@ tree /F
 以下のような構成になっていればよい。
 
 ```text
-GameServer
+CICD-ENV
 │  .env.example
 │  .gitignore
 │  README.md
@@ -383,7 +383,7 @@ GitHub上で新しいリポジトリを作成する。
 
 ```text
 Repository name:
-GameServer
+CICD-ENV
 
 Visibility:
 Private
