@@ -7,17 +7,17 @@
 今回の目的は以下のとおり。
 
 - Docker Compose V2を利用する
-- `.env` による環境設定を導入する
-- Dockerネットワークを定義する
+- `.env`による環境設定を利用する
+- Docker Networkを定義する
 - Docker Volumeを定義する
-- コンテナのヘルスチェックを確認する
+- Healthcheckを定義する
 - Docker Composeによる起動・停止を確認する
 
-この段階ではSatisfactory Serverはまだ導入しない。
+この段階ではSatisfactory Serverは導入しない。
 
 ---
 
-# 2. 前提環境
+## 2. 前提環境
 
 | 項目 | 内容 |
 |---|---|
@@ -30,7 +30,7 @@
 
 ---
 
-# 3. 今回の構成
+## 3. 構成
 
 ```text
 CICD-ENV/
@@ -39,9 +39,7 @@ CICD-ENV/
 │   └── docker-compose.yml
 │
 ├── config/
-│
 ├── data/
-│
 ├── logs/
 │
 ├── scripts/
@@ -60,48 +58,39 @@ CICD-ENV/
 
 ---
 
-# 4. `.env` の作成
+## 4. 環境変数
 
-プロジェクトルートで以下を実行する。
+### `.env`
 
-```powershell
-Copy-Item .env.example .env
-```
-
-作成された `.env` を確認する。
-
-```powershell
-Get-Content .env
-```
-
-初期状態：
+以下を設定する。
 
 ```dotenv
-# Environment
 TZ=Asia/Tokyo
 
-# Project
-COMPOSE_PROJECT_NAME=cicd-env
-
-# Game Server
 GAME_SERVER_NAME=CICD-ENV
 ```
 
+`COMPOSE_PROJECT_NAME`は使用しない。
+
+Docker Composeのプロジェクト名は`docker-compose.yml`側で固定する。
+
 ---
 
-# 5. Docker Composeファイル作成
+## 5. Docker Composeファイル
 
-`compose/docker-compose.yml` を作成する。
+`compose/docker-compose.yml`を作成する。
+
+正式版：
 
 ```yaml
-name: ${COMPOSE_PROJECT_NAME}
+name: cicd-env
 
 services:
 
   test:
     image: nginx:alpine
 
-    container_name: ${COMPOSE_PROJECT_NAME}-test
+    container_name: cicd-env-test
 
     restart: "no"
 
@@ -133,248 +122,98 @@ services:
 networks:
 
   cicd-env-network:
-    name: ${COMPOSE_PROJECT_NAME}-network
+    name: cicd-env-network
     driver: bridge
 
 
 volumes:
 
   test-data:
-    name: ${COMPOSE_PROJECT_NAME}-test-data
+    name: cicd-env-test-data
 ```
 
 ---
 
-# 6. Composeファイルの説明
+## 6. Composeプロジェクト名
 
-## 6.1 name
-
-```yaml
-name: ${COMPOSE_PROJECT_NAME}
-```
-
-`.env` に設定したプロジェクト名を使用する。
-
-```dotenv
-COMPOSE_PROJECT_NAME=cicd-env
-```
-
-そのため、Docker Compose上では
+Composeプロジェクト名は以下で固定する。
 
 ```text
 cicd-env
 ```
 
-というプロジェクトとして管理される。
+```yaml
+name: cicd-env
+```
+
+環境変数`COMPOSE_PROJECT_NAME`は使用しない。
+
+これにより、`.env`の読み込み状態によってComposeプロジェクト名が空になる問題を防止する。
 
 ---
 
-# 7. Service
+## 7. `.env`の読み込み
 
-今回のテスト用サービスは、
+CICD-ENVでは、Compose実行時に`.env`を明示的に指定する。
 
-```yaml
-services:
-  test:
-```
-
-としている。
-
-使用するイメージ：
-
-```yaml
-image: nginx:alpine
-```
-
-これはDocker Composeの基盤確認専用であり、Satisfactory Serverではない。
-
----
-
-# 8. Container Name
-
-```yaml
-container_name: ${COMPOSE_PROJECT_NAME}-test
-```
-
-`.env` が
-
-```dotenv
-COMPOSE_PROJECT_NAME=cicd-env
-```
-
-の場合、
-
-```text
-cicd-env-test
-```
-
-というコンテナ名になる。
-
----
-
-# 9. Restart Policy
-
-```yaml
-restart: "no"
-```
-
-今回は動作確認用コンテナなので自動再起動を無効にする。
-
-Satisfactory Serverを導入する段階では、運用要件を考慮して適切なrestart policyを設定する。
-
----
-
-# 10. Environment
-
-```yaml
-environment:
-  TZ: ${TZ}
-```
-
-`.env` の
-
-```dotenv
-TZ=Asia/Tokyo
-```
-
-をコンテナへ渡す。
-
-これにより、ログなどの時刻を日本時間に統一しやすくする。
-
----
-
-# 11. Volume
-
-```yaml
-volumes:
-  - test-data:/usr/share/nginx/html
-```
-
-Docker Volumeを使用してコンテナ外にデータを保持する。
-
-Volumeの定義：
-
-```yaml
-volumes:
-  test-data:
-```
-
-今回のVolumeはCompose基盤確認用である。
-
-Satisfactory Serverでは、セーブデータなどの永続データについて別途設計する。
-
----
-
-# 12. Network
-
-```yaml
-networks:
-
-  cicd-env-network:
-    name: ${COMPOSE_PROJECT_NAME}-network
-    driver: bridge
-```
-
-コンテナ間通信に使用するDockerネットワークを定義する。
-
-最終的には、
-
-```text
-cicd-env-network
-│
-├── satisfactory
-├── backup
-├── monitoring
-└── その他サービス
-```
-
-という構成を想定する。
-
----
-
-# 13. Healthcheck
-
-```yaml
-healthcheck:
-  test:
-    [
-      "CMD",
-      "wget",
-      "--no-verbose",
-      "--tries=1",
-      "--spider",
-      "http://127.0.0.1/"
-    ]
-  interval: 30s
-  timeout: 5s
-  retries: 3
-  start_period: 10s
-```
-
-コンテナ内部のNginxへHTTPアクセスできるか確認する。
-
-状態は以下のように確認できる。
+基本形式：
 
 ```powershell
-docker compose ps
+docker compose --env-file .env -f compose/docker-compose.yml
 ```
 
-正常であれば、
-
-```text
-healthy
-```
-
-と表示される。
+以降のCompose操作ではこの形式を標準とする。
 
 ---
 
-# 14. Composeファイルの検証
+## 8. Composeファイル検証
 
-プロジェクトルートから実行する。
+以下を実行する。
 
 ```powershell
-docker compose -f compose/docker-compose.yml config
+docker compose --env-file .env -f compose/docker-compose.yml config
 ```
 
 エラーがなければComposeファイルの構文は正常。
 
 ---
 
-# 15. コンテナ起動
+## 9. コンテナ起動
 
 ```powershell
-docker compose -f compose/docker-compose.yml up -d
-```
-
-状態確認：
-
-```powershell
-docker compose -f compose/docker-compose.yml ps
-```
-
-正常な状態の例：
-
-```text
-NAME              STATUS
-cicd-env-test     Up ... (healthy)
+docker compose --env-file .env -f compose/docker-compose.yml up -d
 ```
 
 ---
 
-# 16. コンテナログ確認
+## 10. コンテナ状態確認
 
 ```powershell
-docker compose -f compose/docker-compose.yml logs
+docker compose --env-file .env -f compose/docker-compose.yml ps
 ```
 
-リアルタイムで確認する場合：
+正常な場合、以下のように`healthy`となる。
+
+```text
+NAME             STATUS
+cicd-env-test    Up ... (healthy)
+```
+
+---
+
+## 11. ログ確認
 
 ```powershell
-docker compose -f compose/docker-compose.yml logs -f
+docker compose --env-file .env -f compose/docker-compose.yml logs
 ```
 
-終了する場合：
+リアルタイム確認：
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml logs -f
+```
+
+終了：
 
 ```text
 Ctrl + C
@@ -382,49 +221,19 @@ Ctrl + C
 
 ---
 
-# 17. コンテナへのアクセス確認
-
-ブラウザから以下へアクセスする。
-
-```text
-http://localhost
-```
-
-ただし、今回のComposeではポート公開を設定していないため、ブラウザからのアクセスはできない。
-
-これは意図した状態である。
-
-今回確認するのは、
-
-```text
-Docker
- ↓
-Compose
- ↓
-Container
- ↓
-Healthcheck
-```
-
-の動作である。
-
----
-
-# 18. Volume確認
-
-以下を実行する。
+## 12. Docker Volume確認
 
 ```powershell
 docker volume ls
 ```
 
-以下のVolumeが存在することを確認する。
+以下を確認する。
 
 ```text
 cicd-env-test-data
 ```
 
-詳細確認：
+詳細：
 
 ```powershell
 docker volume inspect cicd-env-test-data
@@ -432,21 +241,19 @@ docker volume inspect cicd-env-test-data
 
 ---
 
-# 19. Network確認
-
-以下を実行する。
+## 13. Docker Network確認
 
 ```powershell
 docker network ls
 ```
 
-以下のネットワークが存在することを確認する。
+以下を確認する。
 
 ```text
 cicd-env-network
 ```
 
-詳細確認：
+詳細：
 
 ```powershell
 docker network inspect cicd-env-network
@@ -454,128 +261,111 @@ docker network inspect cicd-env-network
 
 ---
 
-# 20. 停止
-
-Composeを停止する。
+## 14. 停止
 
 ```powershell
-docker compose -f compose/docker-compose.yml down
+docker compose --env-file .env -f compose/docker-compose.yml down
 ```
 
-状態確認：
-
-```powershell
-docker compose -f compose/docker-compose.yml ps
-```
-
-コンテナが停止・削除されていることを確認する。
+コンテナが停止・削除されることを確認する。
 
 ---
 
-# 21. Volumeが残っていることを確認
-
-再度、
+## 15. Volume保持確認
 
 ```powershell
 docker volume ls
 ```
 
-を実行する。
+以下が残っていることを確認する。
 
 ```text
 cicd-env-test-data
 ```
 
-が残っていることを確認する。
-
-これは重要なポイントである。
-
-```text
-docker compose down
-        │
-        ├── Container → 削除
-        │
-        ├── Network   → 削除
-        │
-        └── Volume    → 原則保持
-```
-
-そのため、コンテナを削除しても永続データを保持できる。
+`docker compose down`では通常Volumeを削除しないため、Volumeは保持される。
 
 ---
 
-# 22. 完全削除について
+## 16. Volumeを含めた完全削除
 
-Volumeまで削除する場合は、
+以下を実行するとVolumeも削除される。
 
 ```powershell
-docker compose -f compose/docker-compose.yml down -v
+docker compose --env-file .env -f compose/docker-compose.yml down -v
 ```
 
-を使用する。
-
-> 本番運用では `down -v` を不用意に実行しないこと。
+> **注意**
 >
-> Volume内の永続データが削除される可能性がある。
+> 本番運用では不用意に`down -v`を実行しない。
+>
+> 永続データが削除される可能性がある。
 
 ---
 
-# 23. 完了条件
+## 17. 正式なCompose操作コマンド
 
-以下を確認する。
+CICD-ENVでは以下の形式を標準とする。
 
-- [ ] `.env` を作成した
-- [ ] `docker-compose.yml` を作成した
-- [ ] `docker compose config` が成功した
-- [ ] コンテナを起動できた
-- [ ] `healthy` を確認できた
-- [ ] Docker Volumeを確認できた
-- [ ] Docker Networkを確認できた
-- [ ] `docker compose down` が成功した
-- [ ] Volumeが保持されることを確認した
+### Config
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml config
+```
+
+### Start
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml up -d
+```
+
+### Status
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml ps
+```
+
+### Logs
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml logs
+```
+
+### Follow Logs
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml logs -f
+```
+
+### Stop
+
+```powershell
+docker compose --env-file .env -f compose/docker-compose.yml down
+```
 
 ---
 
-# 24. Gitへの反映
+## 18. 完了条件
 
-作業完了後、
-
-```powershell
-git status
-```
-
-で変更内容を確認する。
-
-問題がなければ、
-
-```powershell
-git add .
-```
-
-続いて、
-
-```powershell
-git commit -m "feat: add docker compose foundation"
-```
+- [x] `.env`作成
+- [x] `docker-compose.yml`作成
+- [x] Compose構文確認
+- [x] コンテナ起動
+- [x] Healthcheck確認
+- [x] Docker Volume確認
+- [x] Docker Network確認
+- [x] コンテナ停止確認
 
 ---
 
-# 25. 注意事項
+## 19. 動作確認済み事項
 
-## `.env` はGitへPushしない
-
-`.gitignore` に以下が含まれていることを確認する。
-
-```gitignore
-.env
-```
-
-確認：
+以下のコマンドによりCompose設定の読み込みに成功している。
 
 ```powershell
-git check-ignore .env
+docker compose --env-file .env -f compose/docker-compose.yml config
 ```
 
-`.env` が表示されればGit管理対象外になっている。
+`.env`を明示的に指定することで、環境変数が正常に読み込まれることを確認済み。
 
 ---

@@ -1,16 +1,23 @@
-name: ${COMPOSE_PROJECT_NAME}
+name: cicd-env
 
 services:
+
   test:
     image: nginx:alpine
-    container_name: ${COMPOSE_PROJECT_NAME}-test
+
+    container_name: cicd-env-test
+
     restart: "no"
+
     environment:
       TZ: ${TZ}
+
     volumes:
       - test-data:/usr/share/nginx/html
+
     networks:
       - cicd-env-network
+
     healthcheck:
       test:
         [
@@ -26,11 +33,15 @@ services:
       retries: 3
       start_period: 10s
 
+
 networks:
+
   cicd-env-network:
-    name: ${COMPOSE_PROJECT_NAME}-network
+    name: cicd-env-network
     driver: bridge
 
+
 volumes:
+
   test-data:
-    name: ${COMPOSE_PROJECT_NAME}-test-data
+    name: cicd-env-test-data
