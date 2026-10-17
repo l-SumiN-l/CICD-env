@@ -2,36 +2,48 @@ name: cicd-env
 
 services:
 
-  test:
-    image: nginx:alpine
+  satisfactory:
+    # Tag is switchable via .env (default: latest). Pin e.g. v1.9.11 before CI/CD.
+    image: wolveix/satisfactory-server:${SATISFACTORY_IMAGE_TAG:-latest}
 
-    container_name: cicd-env-test
-
-    restart: "no"
+    container_name: cicd-env-satisfactory
+    hostname: cicd-env-satisfactory
+    restart: unless-stopped
+    stop_grace_period: 30s
 
     environment:
       TZ: ${TZ}
+      MAXPLAYERS: ${SATISFACTORY_MAXPLAYERS}
+      AUTOSAVENUM: ${SATISFACTORY_AUTOSAVENUM:-5}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      STEAMBETA: ${STEAMBETA}
+      SKIPUPDATE: ${SKIPUPDATE}
+      LOG: ${SATISFACTORY_LOG}
+      MULTIHOME: ${SATISFACTORY_MULTIHOME}
+      SERVERGAMEPORT: ${SATISFACTORY_GAME_PORT}
+      SERVERMESSAGINGPORT: ${SATISFACTORY_MESSAGING_PORT}
+
+    ports:
+      - "${SATISFACTORY_GAME_PORT}:${SATISFACTORY_GAME_PORT}/tcp"
+      - "${SATISFACTORY_GAME_PORT}:${SATISFACTORY_GAME_PORT}/udp"
+      - "${SATISFACTORY_MESSAGING_PORT}:${SATISFACTORY_MESSAGING_PORT}/tcp"
 
     volumes:
-      - test-data:/usr/share/nginx/html
+      # Save data, server configuration, game files, and automatic backups.
+      - ../data/satisfactory:/config
+      # Keep server logs outside the game-data tree for later log management.
+      - ../logs/satisfactory:/config/logs
 
     networks:
       - cicd-env-network
 
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://127.0.0.1/"
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
 
 
 networks:
@@ -39,9 +51,3 @@ networks:
   cicd-env-network:
     name: cicd-env-network
     driver: bridge
-
-
-volumes:
-
-  test-data:
-    name: cicd-env-test-data
