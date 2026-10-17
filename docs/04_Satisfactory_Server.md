@@ -73,7 +73,7 @@ services:
     image: wolveix/satisfactory-server:latest
     container_name: cicd-env-satisfactory
     restart: unless-stopped
-    stop_grace_period: 30s
+    stop_grace_period: 90s
     ports:
       - "7777:7777/tcp"
       - "7777:7777/udp"
@@ -96,10 +96,10 @@ services:
 |---|---|---|
 | メモリ上限 | 8G | 利用可能メモリ約10GBのうち、ホストとWSL2用の余裕を残す |
 | メモリ予約 | 4G | サーバーが最低限確保すべき量 |
-| `stop_grace_period` | 30s | 停止時にセーブする時間を確保する |
+| `stop_grace_period` | 90s | 停止要求から強制終了までの待ち時間。停止時のセーブ時間を確保する |
 | `restart` | `unless-stopped` | 異常終了時は再起動し、手動停止後は再起動しない |
 
-`stop_grace_period`は、ワールドが大きくなった場合に不足する可能性がある。初回の停止確認でセーブの所要時間を確認し、必要に応じて延長する。
+`stop_grace_period`はセーブの間隔ではなく、停止要求から強制終了（SIGKILL）までの待ち時間である。ワールドが大きいと30sではセーブが間に合わない恐れがあるため、90sとした。通常の停止が早く終わる場合、停止時間は変わらない。
 
 ヘルスチェックはComposeでは定義していない。イメージ自身が`healthcheck.sh`を持つため、挙動を確認する前に上書きしない。
 
@@ -184,5 +184,4 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 
 - `robtme/satisfactory-server`へ移行するか（手動で正常稼働を確認した後に判断する）
 - CI/CD導入前に、バージョンタグ（例: `v1.9.11`）へ固定するか
-- `stop_grace_period`を30sのままにするか、延長するか（初回の停止確認の結果で判断する）
 - `SKIPUPDATE=true`への切り替え時期
