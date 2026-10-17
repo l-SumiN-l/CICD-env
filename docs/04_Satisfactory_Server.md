@@ -151,15 +151,24 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 
 ## 9. 初期検証チェックリスト
 
-- [ ] Compose configが成功する
-- [ ] コンテナが起動する
-- [ ] ゲームファイルのダウンロードが完了する
-- [ ] ポート`7777/tcp`、`7777/udp`、`8888/tcp`が公開される
-- [ ] ゲームクライアントから接続できる
-- [ ] セーブデータが`data/satisfactory/saved`に保存される
-- [ ] コンテナ再作成後もセーブデータが残る
+- [x] Compose configが成功する
+- [x] コンテナが起動する
+- [x] ゲームファイルのダウンロードが完了する（約2.7GB）
+- [x] ポート`7777/tcp`、`7777/udp`、`8888/tcp`が公開される
+- [x] ゲームクライアントから接続できる（別PCから、Server Manager経由）
+- [x] セーブデータが`data/satisfactory/saved`に保存される
+- [x] コンテナ再作成後もセーブデータが残る（ファイルの保持を確認。再作成後のゲーム内の読み込みは未確認）
 - [ ] 手動停止後に意図せず再起動しない
 - [ ] Docker Desktop再起動後に復旧する
+
+### 初回起動で確認した事項（2026-10-17）
+
+- WSL2のメモリを既定のままにすると約7.2GBしか使えず、Composeの上限8Gが効かない。`C:\Users\<ユーザー名>\.wslconfig`に`memory=10GB`、`swap=4GB`を設定した
+- コンテナの起動直後に`steamcmd`が`ERROR! Failed to install app '1690800' (Missing configuration)`で失敗し、コンテナが1回再起動する。再起動後は自動で復旧し、`healthy`になる。初回起動と、コンテナ再作成後の起動の両方で同じ挙動を確認した。ゲームファイルの再ダウンロード（全体）は発生しない
+- ログに大量に出る`LogStringTable: Warning: Failed to find string table entry`は無視してよい
+- ゲームクライアントで「Join Game」などの直接入力から接続すると、`Encryption token missing`が表示される。Server Managerの「Add Server」から追加する
+- `docker compose down`（`-v`なし）は約2秒で完了した。コンテナ再作成でも`data/satisfactory`のゲームファイルとセーブデータは残る
+- 起動確認の前にあった旧nginxの孤立コンテナ`cicd-env-test`は削除した
 
 ## 10. 参照情報
 
