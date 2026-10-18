@@ -159,7 +159,7 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 - [x] セーブデータが`data/satisfactory/saved`に保存される
 - [x] コンテナ再作成後もセーブデータが残る（ファイルの保持を確認。再作成後のゲーム内の読み込みは未確認）
 - [x] 手動停止後に意図せず再起動しない
-- [x] Docker Desktop再起動後の挙動を確認する（自動復旧しない。`docs/07_Task_Scheduler.md`のタスクで復旧させる）
+- [x] Docker Desktop再起動後の挙動を確認する（Docker Desktopだけを終了して起動し直した場合は自動復旧しない。PCを再起動した場合は自動復旧した。`docs/07_Task_Scheduler.md`のタスクでも復旧させる）
 
 ### 初回起動で確認した事項（2026-10-17）
 
