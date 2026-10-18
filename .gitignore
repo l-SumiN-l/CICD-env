@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Local MCP server settings
+.mcp.json
+
 # Docker
 *.pid
 
