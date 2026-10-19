@@ -17,8 +17,9 @@ git pull → docker compose config → (docker compose pull) → docker compose 
 | OS | Windows 11 Home（タスクスケジューラは標準で使用可能） |
 | Docker Desktop | スタートアップアプリに追加済み。ログイン時に自動起動する |
 | PowerShell | 標準の`powershell.exe`（5.1）は使用可能。`pwsh`（PowerShell 7）は未インストール（2026-10-18確認） |
-| Docker Desktop再起動後 | コンテナは自動復旧しない（2026-10-18確認）。`restart: unless-stopped`でも、Docker Desktopを終了すると停止したままになった |
-| 結論 | Docker Desktopの再起動後は、タスクスケジューラの`docker compose up -d`で復旧させる |
+| Docker Desktopだけを終了して起動し直した場合 | コンテナは自動復旧しない（2026-10-18確認）。`restart: unless-stopped`でも、Docker Desktopを終了すると停止したままになった |
+| PCを再起動した場合 | コンテナは自動復旧した（2026-10-18確認。PCの起動の約1分後にコンテナが起動した） |
+| 結論 | PCの再起動は自動で復旧する。Docker Desktopだけを再起動した場合や、予期しない停止に備えて、タスクスケジューラの`docker compose up -d`でも復旧させる |
 
 ## 3. 設計上の注意
 
@@ -164,6 +165,8 @@ docker compose --env-file .env -f compose/docker-compose.yml ps
 1. サーバーが起動している状態で、Docker Desktopを終了する
 2. Docker Desktopを起動し直す（またはWindowsから再ログオンする）
 3. ログオンから約3分後にタスクが実行され、コンテナが自動で`healthy`に戻ることを確認する
+
+タスクを登録する前は、手順2の後もコンテナは自動で復旧しない。タスクの登録後に、この確認を行う。
 
 ## 7. 無効化と削除
 
