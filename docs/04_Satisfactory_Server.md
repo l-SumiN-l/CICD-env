@@ -186,11 +186,12 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 | イメージのライセンス | MIT License（Copyright (c) 2021 Robert Thomas）。GitHubの`LICENSE`で確認 |
 | `healthcheck.sh`の挙動 | `https://127.0.0.1:${SERVERGAMEPORT}/api/v1`へ`HealthCheck`をPOSTし、`jq`で`.data.health == "healthy"`を判定する。`SERVERGAMEPORT`が未設定だと正しく動かない可能性があるため、Composeで`SERVERGAMEPORT`を渡している現構成を維持する |
 | 最新のSatisfactory本体バージョンへの対応 | 未確認。READMEに対応バージョンの記載がなかった |
-| イメージの最新バージョンタグ | `robtme/satisfactory-server`のDocker Hubに`v1.9.11`が確認できた（`latest`と同時期の更新）。一部のページ（3ページ中1ページ目）のみ確認。`wolveix/satisfactory-server`側のタグは未確認 |
+| イメージの最新バージョンタグ | `v1.9.11`（2026-10-19にDocker Hub APIで確認）。`wolveix/satisfactory-server`と`robtme/satisfactory-server`の両方に、同じバージョンタグがある |
 | イメージの改名 | `wolveix`から`robtme`へ改名済み。旧名も更新を受け続けると記載あり |
+| 2つのイメージの同一性 | `latest`のダイジェストが一致した（`sha256:ac252dba...`、2026-10-19に確認）。現在は、同じイメージである |
 
 ### 判断待ち
 
-- `robtme/satisfactory-server`へ移行するか（手動で正常稼働を確認した後に判断する）
+- `robtme/satisfactory-server`へ移行するか（現在は同一のイメージのため、急ぐ必要はない。稼働中のPoCが終わった後に判断する）
 - CI/CD導入前に、バージョンタグ（例: `v1.9.11`）へ固定するか
 - `SKIPUPDATE=true`への切り替え時期
