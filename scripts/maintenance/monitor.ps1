@@ -53,7 +53,7 @@ if ($Test) {
 if (Test-Path $deployLog) {
     $item = Get-Item $deployLog
     $last = Get-Content -Path $deployLog -Tail 1 -Encoding utf8
-    $running = $last -notmatch 'デプロイ終了'
+    $running = $last -notmatch 'デプロイ(終了|中止)'
     if ($running -and $item.LastWriteTime -gt (Get-Date).AddMinutes(-$DeployGraceMin)) {
         Write-Log 'デプロイの実行中のため、今回の確認をスキップした'
         exit 0
