@@ -1,6 +1,6 @@
 # Monitoring（稼働状況のDiscord通知）
 
-> 状態: `monitor.ps1`と送信処理を実装済み（DryRunによる状態遷移の確認まで）。Discordへの実送信、タスクの登録、異常時の実機確認は未実施。進捗は「6. 実装状況」を参照。
+> 状態: `monitor.ps1`と送信処理を実装済み。DryRunによる状態遷移の確認と、Discordへのテスト送信まで完了。デプロイ失敗の通知、タスクの登録、異常時の実機確認は未実施。進捗は「6. 実装状況」を参照。
 
 ## 1. 目的
 
@@ -64,7 +64,7 @@
 | 1 | Webhookの作成（ユーザー） | 未実施（`.env`の`DISCORD_WEBHOOK_URL`にユーザーが設定する） |
 | 2 | `.env.example`の更新 | 完了 |
 | 3 | `monitor.ps1`の作成 | 完了（`scripts/maintenance/monitor.ps1`と送信関数`Send-Discord.ps1`。構文の確認済み） |
-| 4 | 送信のテスト | 未実施（`monitor.ps1 -Test`。実行前にユーザーの確認を取る） |
+| 4 | 送信のテスト | 完了（2026-10-24。`monitor.ps1 -Test`でテストメッセージを1件送り、Discordのチャンネルに届いたことをユーザーが確認） |
 | 5 | 状態遷移の確認 | 完了（`-DryRun`、`-StateFile`、`-ContainerName`で確認。下記） |
 | 6 | 異常時の確認（実機） | 未実施 |
 | 7 | デプロイ失敗の通知 | 未実施（`Send-Discord.ps1`を`deploy.ps1`から呼ぶ） |
