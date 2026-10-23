@@ -47,7 +47,8 @@ Docker Desktopはユーザーのログオン中に動作する。そのため、
 
 ## 4. デプロイスクリプト（サンプル）
 
-> 現時点ではサンプルであり、リポジトリには配置していない。動作確認は未実施。配置する場合は`scripts/deploy/deploy.ps1`とする。
+> 実際のスクリプトは`scripts/deploy/deploy.ps1`に配置した（構文の確認のみ。実行とタスクの登録は未実施）。次のサンプルとの違いは、リポジトリのパスを自身の位置から求めること、バックアップの呼び出し口（`scripts/backup/backup.ps1`。未配置の間は警告して続行する）、更新後に`healthy`になるまで最大5分待つことである。BOM付きUTF-8で保存すること（BOMがないとPowerShell 5.1が日本語を文字化けさせる）。
+> 管理用APIの`SaveGame`による停止前セーブは、認証情報の扱いが未決のため、まだ組み込んでいない（`docs/05_Backup.md`の11のNo.5）。
 
 ```powershell
 # CICD-ENV deploy script (Windows PowerShell 5.1 compatible)
