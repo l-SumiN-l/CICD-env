@@ -23,7 +23,6 @@ function Write-Log([string]$Message) {
 # 通知が失敗しても、デプロイの結果 (終了コード) は変えない。
 function Stop-Deploy([string]$Step, [string]$Detail) {
     Write-Log "中止: $Step ($Detail)"
-    Write-Log '--- デプロイ中止 ---'
     if (Get-Command Send-DiscordMessage -ErrorAction SilentlyContinue) {
         $message = '🚨 デプロイが失敗した ({0})。工程: {1} / {2}。詳細は logs\deploy.log を参照' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Step, $Detail
         try {
@@ -33,6 +32,8 @@ function Stop-Deploy([string]$Step, [string]$Detail) {
             Write-Log '警告: 失敗の通知で例外が発生した'
         }
     }
+    # monitor.ps1 は deploy.log の最終行でデプロイの実行中かを判定するため、最終行は必ず「中止」にする
+    Write-Log '--- デプロイ中止 ---'
     exit 1
 }
 
