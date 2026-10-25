@@ -149,6 +149,24 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 - 現時点では既定（`SKIPUPDATE=false`）のままにする（`.env`の`SKIPUPDATE`で制御する）
 - タスクスケジューラによる`docker compose up -d`の定期実行でも、コンテナが再作成されると更新が走る可能性がある点に注意する
 
+### コンテナの再作成と`SKIPUPDATE`の切り替え前の確認
+
+`SKIPUPDATE=false`のとき、起動のたびにsteamcmdがゲーム本体を検証・更新する。その最中にコンテナを停止・再作成すると、`gamefiles`が不完全な状態になり、実行ファイルが欠けることがある。`SKIPUPDATE=true`ではsteamcmdが走らないため、不完全な状態は自動では直らず、サーバーが起動できずに再起動を繰り返す。
+
+2026-10-25に実際に起きた。利用者が更新・検証の途中でコンテナを停止して再起動し、さらに検証中のコンテナを再作成した。そのあと`SKIPUPDATE=true`で起動すると、`FactoryServer-Linux-Shipping`がなく、`Skipping update as flag is set`のあとに`not found`で失敗した。`SKIPUPDATE=false`に戻して再作成すると、約10分で約1.4GB（656ファイル）が書き直され、復旧した。セーブデータ（`saved`）は無事だった。
+
+再作成と、`SKIPUPDATE=true`への切り替えの前に、次を確認する。
+
+1. コンテナが`healthy`であること（`docker inspect --format '{{.State.Health.Status}}' cicd-env-satisfactory`）。`starting`や`unhealthy`の間は、steamcmdが動いている可能性があるため、再作成・停止をしない
+2. ログに`Update state`の行が出続けていないこと（`docker logs --tail 5 cicd-env-satisfactory`）
+3. 実行ファイルがあること
+
+```powershell
+Test-Path data\satisfactory\gamefiles\Engine\Binaries\Linux\FactoryServer-Linux-Shipping
+```
+
+3が`False`の場合は、`SKIPUPDATE=false`のまま再作成し、`healthy`になるまで待ってから、`SKIPUPDATE=true`へ切り替える。
+
 ## 9. 初期検証チェックリスト
 
 - [x] Compose configが成功する
@@ -206,4 +224,6 @@ Satisfactoryのコンソールで`quit`を実行して保存してから停止�
 - 未決定: タグの管理方法
   - 案A: タグを`.env`に残し、Actionsは通知のみ（構成変更が不要。更新が少なければ十分）
   - 案B: タグを`compose/image.env`に切り出してコミットし、更新PRを自動作成する（履歴が残り戻しやすい。標準コマンドの変更と、Renovate等の導入が必要）
-- 未確認: `SKIPUPDATE=true`での初回ゲームファイル取得の挙動（検証用の別名コンテナで確認する）
+- `SKIPUPDATE=true`でゲームファイルが不完全な場合は、取得し直されずに起動に失敗する（2026-10-25に確認。対処は「コンテナの再作成と`SKIPUPDATE`の切り替え前の確認」を参照）
+- 未確認: `SKIPUPDATE=true`で、ゲームファイルが空の状態から起動した場合の挙動（検証用の別名コンテナで確認する）
+- 2026-10-25時点の本番の`.env`は、不完全な状態からの復旧のため`SKIPUPDATE=false`に戻してある。`.env.example`は`true`のため、食い違っている。切り替えは、上の確認を行ってから実施する
