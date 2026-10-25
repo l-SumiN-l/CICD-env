@@ -190,7 +190,138 @@ Unregister-ScheduledTask -TaskName 'CICD-ENV Deploy' -Confirm:$false
 | タスクが実行されない | 「ユーザーがログオンしているときのみ実行する」のため、ログオンしていないと実行されない |
 | `git pull`が失敗する | 認証が必要か確認する（Git Credential Managerの認証は対話が必要になる場合がある） |
 
-## 9. 未確認事項
+## 9. 監視タスク（CICD-ENV Monitor）
+
+コンテナの状態を5分ごとに確認し、Discordへ通知する（`docs/06_Monitoring.md`）。デプロイのタスクとは別のタスクにする。
+
+| 通知 | タイミング |
+|---|---|
+| 定期通知 | 1時間に1回（毎時0分ごろ）。正常でも異常でも、現在の状態を送る |
+| 異常の通知 | 異常が連続3回（約15分）続いたとき、1回だけ |
+| 復旧の通知 | 異常から`healthy`に戻ったとき、1回だけ |
+
+### 9.1 事前の確認
+
+- `.env`の`DISCORD_WEBHOOK_URL`が設定済みである（値を画面に出さずに確認する）
+
+```powershell
+Select-String -Path C:\workspace\CICD-env\.env -Pattern '^DISCORD_WEBHOOK_URL=.+' -Quiet
+```
+
+`True`なら設定済み。
+
+### 9.2 PowerShellで登録する
+
+通常のPowerShell（管理者権限は不要）で実行する。
+
+```powershell
+$script = 'C:\workspace\CICD-env\scripts\maintenance\monitor.ps1'
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`"" `
+    -WorkingDirectory 'C:\workspace\CICD-env'
+
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
+    -RepetitionInterval (New-TimeSpan -Minutes 5) `
+    -RepetitionDuration (New-TimeSpan -Days 3650)
+
+$settings  = New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
+    -LogonType Interactive -RunLevel Limited
+
+Register-ScheduledTask -TaskName 'CICD-ENV Monitor' `
+    -Action $action -Trigger $trigger `
+    -Settings $settings -Principal $principal
+```
+
+| 設定 | 値 | 理由 |
+|---|---|---|
+| トリガー | 登録の1分後に開始し、5分ごとに繰り返す（期間は約10年） | 異常を連続3回（約15分）で検知するため |
+| `-WindowStyle Hidden` | 有効 | 5分ごとにウィンドウが表示されるのを抑える（起動の一瞬は見える場合がある） |
+| `StartWhenAvailable` | 有効 | スリープなどで実行時刻を逃した場合、復帰後に実行する |
+| `MultipleInstances` | `IgnoreNew` | 実行中に重複して起動しない |
+| `ExecutionTimeLimit` | 5分 | 処理が止まった場合に打ち切る |
+| `LogonType` | `Interactive` | ユーザーがログオンしているときのみ実行する（3.1を参照）。Docker Desktopもログオン中のみ動作する |
+
+### 9.3 GUIで登録する場合
+
+1. 「タスクの作成」を選び、名前を`CICD-ENV Monitor`、「ユーザーがログオンしているときのみ実行する」を選ぶ
+2. 「トリガー」で「新規」→ 「1回」、開始を今から1分後にし、「繰り返し間隔」を5分、「継続時間」を「無制限」にする
+3. 「操作」で、プログラムに`powershell.exe`、引数に`-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\workspace\CICD-env\scripts\maintenance\monitor.ps1"`、開始に`C:\workspace\CICD-env`を指定する
+4. 「設定」で、「予定された時刻にタスクを開始できなかった場合、すぐにタスクを開始する」にチェックし、「タスクが既に実行中の場合」を「新しいインスタンスを開始しない」にする
+
+### 9.4 動作確認
+
+```powershell
+Start-ScheduledTask -TaskName 'CICD-ENV Monitor'
+Start-Sleep -Seconds 10
+Get-ScheduledTaskInfo -TaskName 'CICD-ENV Monitor' | Select-Object LastRunTime, LastTaskResult, NextRunTime
+Get-Content C:\workspace\CICD-env\logs\monitor.log -Tail 10 -Encoding utf8
+Get-Content C:\workspace\CICD-env\logs\monitor-state.json
+```
+
+| 確認項目 | 期待する結果 |
+|---|---|
+| `LastTaskResult` | `0` |
+| `NextRunTime` | 約5分後 |
+| `monitor-state.json` | `state`が`up`で、`lastReport`が現在の時刻（`yyyy-MM-dd HH`）になっている |
+| Discord | 登録後の最初の実行で、`[定期]`の通知が1件届く。その後は毎時1件 |
+
+### 9.5 一時的な無効化
+
+登録は残したまま、実行だけ止める。サーバーを意図して止めるメンテナンスの前に行う（異常と定期通知が届き続けるのを防ぐ）。
+
+```powershell
+Disable-ScheduledTask -TaskName 'CICD-ENV Monitor'
+Enable-ScheduledTask  -TaskName 'CICD-ENV Monitor'
+```
+
+1行目で無効化し、2行目で有効に戻す。無効化の間は、確認も通知も行われない。有効に戻すと、次の5分ごとの実行から再開する。
+
+### 9.6 登録の解除（削除）
+
+監視が不要になった場合や、登録をやり直す場合に行う。通常のPowerShell（管理者権限は不要）で実行する。
+
+1. 登録されていることを確認する
+
+```powershell
+Get-ScheduledTask -TaskName 'CICD-ENV Monitor' | Select-Object TaskName, State
+```
+
+2. 実行中なら止める（実行中でなければ不要）
+
+```powershell
+Stop-ScheduledTask -TaskName 'CICD-ENV Monitor'
+```
+
+3. 登録を解除する
+
+```powershell
+Unregister-ScheduledTask -TaskName 'CICD-ENV Monitor' -Confirm:$false
+```
+
+4. 解除されたことを確認する
+
+```powershell
+Get-ScheduledTask -TaskName 'CICD-ENV Monitor' -ErrorAction SilentlyContinue
+```
+
+何も表示されなければ解除済み。
+
+GUIで解除する場合は、「タスク スケジューラ」の「タスク スケジューラ ライブラリ」で`CICD-ENV Monitor`を右クリックし、「削除」を選ぶ。
+
+解除の影響と残るもの:
+
+| 項目 | 内容 |
+|---|---|
+| 解除で止まるもの | 5分ごとの確認、異常・復旧の通知、毎時の定期通知 |
+| 影響しないもの | サーバー（コンテナ）、`CICD-ENV Deploy`タスク、`deploy.ps1`の失敗通知（デプロイの失敗はDiscordへ通知され続ける） |
+| 残るもの | `.env`の`DISCORD_WEBHOOK_URL`、`logs/monitor.log`、`logs/monitor-state.json`、スクリプト一式。いずれも削除されない |
+
+- 再び登録するときは、9.2の手順をそのまま実行する。`monitor-state.json`が残っていると、前回の状態から再開する（`down`のまま解除した場合は、復旧時に復旧の通知が1回届く）。初期状態から始めたい場合は、先に`logs\monitor-state.json`を削除する
+- 通知を完全にやめる場合は、DiscordのチャンネルでWebhook自体も削除し、`.env`の`DISCORD_WEBHOOK_URL`を空にする（`deploy.ps1`の失敗通知も止まる）
+
+## 10. 未確認事項
 
 - デプロイスクリプトとタスクの動作確認（サンプルの段階）
 - タスクの`git pull`で、Git Credential Managerの認証が非対話で通るか
